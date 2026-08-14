@@ -267,10 +267,9 @@
     <!-- TAB 1: SETUP -->
     <div id="tab-setup" class="content active">
         
-        <!-- AI Prompt Box -->
         <div class="ai-prompt-box">
             <h4>🤖 Generate Questions with AI</h4>
-            <p style="margin-top: 0; font-size: 14px; color: #475569;">Copy this prompt into ChatGPT, Claude, or Gemini to generate perfectly formatted questions. Paste the result directly into the box below.</p>
+            <p style="margin-top: 0; font-size: 14px; color: #475569;">Copy this prompt into ChatGPT, Claude, or Gemini. Paste the result below.</p>
             <textarea id="ai-prompt-text" class="ai-textarea" readonly>Act as an expert quiz creator. Generate 50 multiple-choice questions about [INSERT TOPIC HERE]. 
 
 Strictly follow this exact format for every question. Separate each question block with a single blank line:
@@ -284,12 +283,7 @@ Ans: [Correct option letter. If multiple are correct, separate with a comma, e.g
 Explanation: [Brief explanation of why the answer is correct]</textarea>
             <button class="copy-btn" onclick="copyAIPrompt()" id="copy-btn-el">📋 Copy Prompt</button>
         </div>
-
-        <div class="instructions">
-            <strong>Or type manually:</strong> Leave a blank line between questions. Any text after the "Ans:" line becomes the explanation automatically. 
-        </div>
         
-        <!-- Main Input -->
         <textarea id="mcq-input" oninput="parseQuestions()" placeholder="Paste your formatted MCQs here...">1. Which language runs natively in a web browser?
 a. Java
 b. C
@@ -306,7 +300,6 @@ D: Yellow
 Ans: A, C, D
 The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
         
-        <!-- Live Status Bar -->
         <div id="parse-status" class="status-bar">
             <span>Analyzing text...</span>
         </div>
@@ -358,32 +351,38 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
 
     // Run on page load to restore saved data
     window.onload = () => {
-        // Restore Questions Text
+        // Restore Setup Texts
         const savedText = localStorage.getItem('mcq_saved_text');
-        if (savedText !== null) {
-            document.getElementById('mcq-input').value = savedText;
-        }
+        if (savedText !== null) document.getElementById('mcq-input').value = savedText;
 
-        // Restore Exam Settings (Timer & Randomize)
         const savedTimer = localStorage.getItem('mcq_saved_timer');
-        if (savedTimer !== null) {
-            document.getElementById('time-limit').value = savedTimer;
-        }
+        if (savedTimer !== null) document.getElementById('time-limit').value = savedTimer;
 
         const savedRandomize = localStorage.getItem('mcq_saved_randomize');
-        if (savedRandomize !== null) {
-            document.getElementById('randomize-qs').checked = (savedRandomize === 'true');
-        }
+        if (savedRandomize !== null) document.getElementById('randomize-qs').checked = (savedRandomize === 'true');
 
         parseQuestions();
+
+        // Restore Tab State
+        const savedTab = localStorage.getItem('mcq_current_tab');
+        if (savedTab === 'exam' && questionsData.length > 0) {
+            switchTab('exam');
+        } else {
+            switchTab('setup');
+        }
+
+        // Restore Active Exam or Results State
+        const examView = localStorage.getItem('mcq_exam_view');
+        if (examView === 'active') {
+            restoreActiveExam();
+        } else if (examView === 'result') {
+            restoreResultView();
+        }
     };
 
     function saveExamSettings() {
-        const timerVal = document.getElementById('time-limit').value;
-        const isRandom = document.getElementById('randomize-qs').checked;
-        
-        localStorage.setItem('mcq_saved_timer', timerVal);
-        localStorage.setItem('mcq_saved_randomize', isRandom);
+        localStorage.setItem('mcq_saved_timer', document.getElementById('time-limit').value);
+        localStorage.setItem('mcq_saved_randomize', document.getElementById('randomize-qs').checked);
     }
 
     function copyAIPrompt() {
@@ -405,6 +404,8 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
     function switchTab(tabName) {
         if(tabName === 'exam' && questionsData.length === 0) return;
 
+        localStorage.setItem('mcq_current_tab', tabName);
+
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
         
@@ -420,8 +421,6 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
 
     function parseQuestions() {
         const text = document.getElementById('mcq-input').value;
-        
-        // Save the raw text to localStorage automatically
         localStorage.setItem('mcq_saved_text', text);
 
         const blocks = text.split(/\n\s*\n/); 
@@ -484,16 +483,14 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
         const examTab = document.getElementById('tab-exam-btn');
         
         if (questionsData.length > 0) {
-            status.innerHTML = `✅ ${questionsData.length} valid question${questionsData.length > 1 ? 's' : ''} detected. Ready for exam! (Auto-saved)`;
+            status.innerHTML = `✅ ${questionsData.length} valid question${questionsData.length > 1 ? 's' : ''} detected. (Auto-saved)`;
             status.classList.add('success');
-            
             examTab.disabled = false;
             examTab.style.opacity = 1;
             examTab.style.cursor = 'pointer';
         } else {
             status.innerHTML = `⚠️ No valid questions detected yet. Please check your format.`;
             status.classList.remove('success');
-            
             examTab.disabled = true;
             examTab.style.opacity = 0.5;
             examTab.style.cursor = 'not-allowed';
@@ -507,17 +504,8 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
         }
     }
 
-    function startExam() {
-        document.getElementById('exam-pre').style.display = 'none';
-        document.getElementById('exam-result').style.display = 'none';
-        document.getElementById('exam-active').style.display = 'block';
-        
-        activeExamQuestions = [...questionsData];
-        const isRandomized = document.getElementById('randomize-qs').checked;
-        if (isRandomized) {
-            shuffleArray(activeExamQuestions);
-        }
-
+    // Renders the DOM for active questions
+    function renderActiveQuestions() {
         const container = document.getElementById('questions-container');
         container.innerHTML = "";
 
@@ -532,32 +520,112 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
             
             for (const [key, value] of Object.entries(q.options)) {
                 let optTextDisplay = value ? value : "";
+                // Added onchange to instantly save user's selection to localStorage
                 html += `<label class="option-label">
-                    <input type="${inputType}" name="q${index}" value="${key}"> 
+                    <input type="${inputType}" name="q${index}" value="${key}" onchange="saveUserAnswers()"> 
                     <strong>${key})</strong>&nbsp;${optTextDisplay}
                 </label>`;
             }
             html += `</div>`;
             container.innerHTML += html;
         });
+    }
+
+    // Saves current selections to localStorage
+    function saveUserAnswers() {
+        let answers = {};
+        activeExamQuestions.forEach((q, index) => {
+            const selectedNodes = document.querySelectorAll(`input[name="q${index}"]:checked`);
+            answers[index] = Array.from(selectedNodes).map(n => n.value);
+        });
+        localStorage.setItem('mcq_user_answers', JSON.stringify(answers));
+    }
+
+    // Restores user selections from localStorage onto the DOM
+    function restoreUserAnswers() {
+        const savedAnswers = JSON.parse(localStorage.getItem('mcq_user_answers') || '{}');
+        Object.keys(savedAnswers).forEach(index => {
+            savedAnswers[index].forEach(val => {
+                const el = document.querySelector(`input[name="q${index}"][value="${val}"]`);
+                if (el) el.checked = true;
+            });
+        });
+    }
+
+    function startExam() {
+        localStorage.setItem('mcq_exam_view', 'active');
+        
+        activeExamQuestions = [...questionsData];
+        if (document.getElementById('randomize-qs').checked) {
+            shuffleArray(activeExamQuestions);
+        }
+        
+        // Save the frozen array so order remains constant on refresh
+        localStorage.setItem('mcq_active_questions', JSON.stringify(activeExamQuestions));
+        localStorage.setItem('mcq_user_answers', '{}'); // clear old answers
+
+        document.getElementById('exam-pre').style.display = 'none';
+        document.getElementById('exam-result').style.display = 'none';
+        document.getElementById('exam-active').style.display = 'block';
+        
+        renderActiveQuestions();
 
         const minutes = parseFloat(document.getElementById('time-limit').value);
         if (minutes > 0) {
             timeRemaining = minutes * 60;
-            updateTimerDisplay();
-            document.getElementById('timer').style.display = 'block';
-            timerInterval = setInterval(() => {
-                timeRemaining--;
-                updateTimerDisplay();
-                if (timeRemaining <= 0) {
-                    clearInterval(timerInterval);
-                    alert("Time is up! Submitting exam automatically.");
-                    submitExam();
-                }
-            }, 1000);
+            localStorage.setItem('mcq_time_remaining', timeRemaining);
+            startTimerLogic();
         } else {
+            timeRemaining = 0;
+            localStorage.setItem('mcq_time_remaining', '0');
             document.getElementById('timer').style.display = 'none';
         }
+    }
+
+    // Helper to resume active exam on page load
+    function restoreActiveExam() {
+        document.getElementById('exam-pre').style.display = 'none';
+        document.getElementById('exam-result').style.display = 'none';
+        document.getElementById('exam-active').style.display = 'block';
+
+        activeExamQuestions = JSON.parse(localStorage.getItem('mcq_active_questions') || '[]');
+        timeRemaining = parseInt(localStorage.getItem('mcq_time_remaining') || '0');
+
+        renderActiveQuestions();
+        restoreUserAnswers();
+
+        if (timeRemaining > 0) {
+            startTimerLogic();
+        } else {
+             document.getElementById('timer').style.display = 'none';
+        }
+    }
+
+    // Helper to resume result view on page load
+    function restoreResultView() {
+        activeExamQuestions = JSON.parse(localStorage.getItem('mcq_active_questions') || '[]');
+        renderActiveQuestions();
+        restoreUserAnswers();
+        submitExam(); // Grade it immediately without jumping views visually
+    }
+
+    function startTimerLogic() {
+        updateTimerDisplay();
+        document.getElementById('timer').style.display = 'block';
+        
+        if (timerInterval) clearInterval(timerInterval);
+        
+        timerInterval = setInterval(() => {
+            timeRemaining--;
+            localStorage.setItem('mcq_time_remaining', timeRemaining); // Save tick
+            updateTimerDisplay();
+            
+            if (timeRemaining <= 0) {
+                clearInterval(timerInterval);
+                alert("Time is up! Submitting exam automatically.");
+                submitExam();
+            }
+        }, 1000);
     }
 
     function updateTimerDisplay() {
@@ -569,13 +637,15 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
     function submitExam() {
         if (timerInterval) clearInterval(timerInterval);
         
+        // Save that we are now in the results view
+        localStorage.setItem('mcq_exam_view', 'result');
+        
         let score = 0;
         const reviewContainer = document.getElementById('review-container');
         reviewContainer.innerHTML = "<h3 style='margin-bottom: 24px; font-size: 24px; border-bottom: 2px solid #E5E7EB; padding-bottom: 10px;'>Review Your Answers:</h3>";
 
         activeExamQuestions.forEach((q, index) => {
             const selectedNodes = document.querySelectorAll(`input[name="q${index}"]:checked`);
-            
             const userAnswers = Array.from(selectedNodes).map(n => n.value).sort();
             const correctAnswers = [...q.answers].sort();
             
@@ -585,7 +655,6 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
             if (isCorrect) score++;
 
             let qTextDisplay = q.question ? q.question : "[No Question Text Provided]";
-            
             let userDisplay = userAnswers.length > 0 ? userAnswers.join(', ') : 'Skipped';
             let correctDisplay = correctAnswers.join(', ');
 
@@ -614,6 +683,12 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
     }
 
     function resetExam() {
+        // Clear all the saved active-exam data to start fresh
+        localStorage.removeItem('mcq_exam_view');
+        localStorage.removeItem('mcq_active_questions');
+        localStorage.removeItem('mcq_user_answers');
+        localStorage.removeItem('mcq_time_remaining');
+
         document.getElementById('exam-result').style.display = 'none';
         document.getElementById('exam-pre').style.display = 'block';
     }
