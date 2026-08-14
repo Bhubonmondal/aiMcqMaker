@@ -286,11 +286,25 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
         </div>
 
         <div class="instructions">
-            <strong>Or type manually:</strong> Leave a blank line between questions. Any text after the "Ans:" line becomes the explanation automatically.
+            <strong>Or type manually:</strong> Leave a blank line between questions. Any text after the "Ans:" line becomes the explanation automatically. 
         </div>
         
         <!-- Main Input -->
-        <textarea id="mcq-input" oninput="parseQuestions()" placeholder="Paste your formatted MCQs here..."></textarea>
+        <textarea id="mcq-input" oninput="parseQuestions()" placeholder="Paste your formatted MCQs here...">1. Which language runs natively in a web browser?
+a. Java
+b. C
+c. Python
+d. JavaScript
+Ans: d
+JavaScript is the native language of the web.
+
+2. Which of the following are primary colors in painting?
+A: Red
+B: Green
+C: Blue
+D: Yellow
+Ans: A, C, D
+The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
         
         <!-- Live Status Bar -->
         <div id="parse-status" class="status-bar">
@@ -306,11 +320,11 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
             
             <div class="setup-row">
                 <label>Set Timer (minutes):</label>
-                <input type="number" id="time-limit" placeholder="Leave blank for no timer" min="1">
+                <input type="number" id="time-limit" placeholder="Leave blank for no timer" min="1" oninput="saveExamSettings()">
             </div>
             
             <div class="setup-row">
-                <input type="checkbox" id="randomize-qs">
+                <input type="checkbox" id="randomize-qs" onchange="saveExamSettings()">
                 <label for="randomize-qs" style="font-weight: 500; cursor: pointer;">Randomize question order</label>
             </div>
             
@@ -342,10 +356,35 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
     let timerInterval = null;
     let timeRemaining = 0;
 
-    // Run parser once on page load to catch default text
+    // Run on page load to restore saved data
     window.onload = () => {
+        // Restore Questions Text
+        const savedText = localStorage.getItem('mcq_saved_text');
+        if (savedText !== null) {
+            document.getElementById('mcq-input').value = savedText;
+        }
+
+        // Restore Exam Settings (Timer & Randomize)
+        const savedTimer = localStorage.getItem('mcq_saved_timer');
+        if (savedTimer !== null) {
+            document.getElementById('time-limit').value = savedTimer;
+        }
+
+        const savedRandomize = localStorage.getItem('mcq_saved_randomize');
+        if (savedRandomize !== null) {
+            document.getElementById('randomize-qs').checked = (savedRandomize === 'true');
+        }
+
         parseQuestions();
     };
+
+    function saveExamSettings() {
+        const timerVal = document.getElementById('time-limit').value;
+        const isRandom = document.getElementById('randomize-qs').checked;
+        
+        localStorage.setItem('mcq_saved_timer', timerVal);
+        localStorage.setItem('mcq_saved_randomize', isRandom);
+    }
 
     function copyAIPrompt() {
         const promptText = document.getElementById('ai-prompt-text');
@@ -381,6 +420,10 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
 
     function parseQuestions() {
         const text = document.getElementById('mcq-input').value;
+        
+        // Save the raw text to localStorage automatically
+        localStorage.setItem('mcq_saved_text', text);
+
         const blocks = text.split(/\n\s*\n/); 
         questionsData = [];
 
@@ -437,12 +480,11 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
             }
         });
 
-        // Update real-time UI status
         const status = document.getElementById('parse-status');
         const examTab = document.getElementById('tab-exam-btn');
         
         if (questionsData.length > 0) {
-            status.innerHTML = `✅ ${questionsData.length} valid question${questionsData.length > 1 ? 's' : ''} detected. Ready for exam!`;
+            status.innerHTML = `✅ ${questionsData.length} valid question${questionsData.length > 1 ? 's' : ''} detected. Ready for exam! (Auto-saved)`;
             status.classList.add('success');
             
             examTab.disabled = false;
