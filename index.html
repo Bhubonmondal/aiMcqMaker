@@ -432,7 +432,7 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
         const text = document.getElementById('mcq-input').value;
         localStorage.setItem('mcq_saved_text', text);
 
-        const blocks = text.split(/\n\s*\n/); 
+        const blocks = text.split(/\n\s*\n|\n(?=(?:Q(?:UESTION)?\s*\d*[:\-\.]|\d+\s*[\.\)\-])\s+)/i);
         questionsData = [];
 
         blocks.forEach(block => {
