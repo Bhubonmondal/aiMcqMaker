@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCQ Test Generator</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg: #F3F4F6;
+            --surface: #FFFFFF;
+            --text: #1F2937;
+            --border: #E5E7EB;
+        }
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--surface);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 16px;
+            text-align: center;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--bg);
+            border: none;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            font-size: 16px;
+        }
+
+        .tab.active {
+            background: var(--surface);
+            border-bottom-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Content Areas */
+        .content {
+            display: none;
+            padding: 24px;
+        }
+
+        .content.active {
+            display: block;
+        }
+
+        /* Form Elements */
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 12px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        .instructions {
+            background: #EFF6FF;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* AI Prompt Box */
+        .ai-prompt-box {
+            background: #F8FAFC;
+            border: 1px dashed #94A3B8;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .ai-prompt-box h4 {
+            margin: 0 0 8px 0;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ai-textarea {
+            height: 120px;
+            background: #F1F5F9;
+            color: #475569;
+            border: 1px solid #CBD5E1;
+            margin-bottom: 0;
+            font-size: 13px;
+        }
+
+        .copy-btn {
+            background: #10B981;
+            margin-top: 8px;
+        }
+
+        .copy-btn:hover {
+            background: #059669;
+        }
+
+        /* Live Status Indicator */
+        .status-bar {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #F3F4F6;
+            color: #4B5563;
+            transition: all 0.3s;
+        }
+
+        .status-bar.success {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        /* Exam Setup */
+        .setup-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        input[type="number"] {
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            width: 150px;
+        }
+
+        input[type="checkbox"], input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+
+        /* Active Exam */
+        .timer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        #timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #DC2626;
+        }
+
+        .question-block {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: var(--bg);
+            border-radius: 6px;
+        }
+
+        .question-text {
+            font-weight: 600;
+            margin-bottom: 12px;
+            font-size: 16px;
+            white-space: pre-wrap;
+        }
+
+        .multiple-hint {
+            font-size: 13px;
+            color: #6B7280;
+            font-weight: normal;
+            margin-left: 8px;
+        }
+
+        .option-label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 4px;
+        }
+        
+        .option-label:hover {
+            background-color: #E5E7EB;
+        }
+
+        .result-block {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .score {
+            font-size: 48px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .explanation {
+            margin-top: 12px;
+            padding: 10px;
+            background: #FEF3C7;
+            border-left: 4px solid #D97706;
+            color: #92400E;
+            font-size: 14px;
+            border-radius: 0 4px 4px 0;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('setup')">1. Setup MCQs</button>
+        <button class="tab" onclick="switchTab('exam')" id="tab-exam-btn" disabled style="opacity: 0.5; cursor: not-allowed;">2. Take Exam</button>
+    </div>
+
+    <!-- TAB 1: SETUP -->
+    <div id="tab-setup" class="content active">
+        
+        <!-- AI Prompt Box -->
+        <div class="ai-prompt-box">
+            <h4>🤖 Generate Questions with AI</h4>
+            <p style="margin-top: 0; font-size: 14px; color: #475569;">Copy this prompt into ChatGPT, Claude, or Gemini to generate perfectly formatted questions. Paste the result directly into the box below.</p>
+            <textarea id="ai-prompt-text" class="ai-textarea" readonly>Act as an expert quiz creator. Generate 50 multiple-choice questions about [INSERT TOPIC HERE]. 
+
+Strictly follow this exact format for every question. Separate each question block with a single blank line:
+
+1. [Question text]
+A. [Option 1]
+B. [Option 2]
+C. [Option 3]
+D. [Option 4]
+Ans: [Correct option letter. If multiple are correct, separate with a comma, e.g., A, C]
+Explanation: [Brief explanation of why the answer is correct]</textarea>
+            <button class="copy-btn" onclick="copyAIPrompt()" id="copy-btn-el">📋 Copy Prompt</button>
+        </div>
+
+        <div class="instructions">
+            <strong>Or type manually:</strong> Leave a blank line between questions. Any text after the "Ans:" line becomes the explanation automatically.
+        </div>
+        
+        <!-- Main Input -->
+        <textarea id="mcq-input" oninput="parseQuestions()" placeholder="Paste your formatted MCQs here..."></textarea>
+        
+        <!-- Live Status Bar -->
+        <div id="parse-status" class="status-bar">
+            <span>Analyzing text...</span>
+        </div>
+    </div>
+
+    <!-- TAB 2: EXAM -->
+    <div id="tab-exam" class="content">
+        <div id="exam-pre">
+            <h2>Exam Setup</h2>
+            <p>You have <strong id="q-count">0</strong> questions ready.</p>
+            
+            <div class="setup-row">
+                <label>Set Timer (minutes):</label>
+                <input type="number" id="time-limit" placeholder="Leave blank for no timer" min="1">
+            </div>
+            
+            <div class="setup-row">
+                <input type="checkbox" id="randomize-qs">
+                <label for="randomize-qs" style="font-weight: 500; cursor: pointer;">Randomize question order</label>
+            </div>
+            
+            <button onclick="startExam()">Start Exam</button>
+        </div>
+
+        <div id="exam-active" style="display: none;">
+            <div class="timer-header">
+                <h2>Exam in Progress</h2>
+                <div id="timer">--:--</div>
+            </div>
+            <div id="questions-container"></div>
+            <button onclick="submitExam()" style="width: 100%; padding: 16px; font-size: 16px; margin-top: 20px;">Submit Exam</button>
+        </div>
+
+        <div id="exam-result" style="display: none;" class="result-block">
+            <h2>Exam Complete!</h2>
+            <div class="score" id="score-display">0/0</div>
+            <p id="percentage-display" style="font-size: 20px; font-weight: bold;">0%</p>
+            <button onclick="resetExam()">Take Again</button>
+            <div id="review-container" style="text-align: left; margin-top: 40px;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let questionsData = []; 
+    let activeExamQuestions = []; 
+    let timerInterval = null;
+    let timeRemaining = 0;
+
+    // Run parser once on page load to catch default text
+    window.onload = () => {
+        parseQuestions();
+    };
+
+    function copyAIPrompt() {
+        const promptText = document.getElementById('ai-prompt-text');
+        promptText.select();
+        document.execCommand('copy');
+        
+        const btn = document.getElementById('copy-btn-el');
+        const originalText = btn.innerText;
+        btn.innerText = '✅ Copied!';
+        btn.style.background = '#059669';
+        
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.style.background = '#10B981';
+        }, 2000);
+    }
+
+    function switchTab(tabName) {
+        if(tabName === 'exam' && questionsData.length === 0) return;
+
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+        
+        if (tabName === 'setup') {
+            document.querySelectorAll('.tab')[0].classList.add('active');
+            document.getElementById('tab-setup').classList.add('active');
+        } else {
+            document.querySelectorAll('.tab')[1].classList.add('active');
+            document.getElementById('tab-exam').classList.add('active');
+            document.getElementById('q-count').innerText = questionsData.length;
+        }
+    }
+
+    function parseQuestions() {
+        const text = document.getElementById('mcq-input').value;
+        const blocks = text.split(/\n\s*\n/); 
+        questionsData = [];
+
+        blocks.forEach(block => {
+            if (!block.trim()) return;
+            
+            const lines = block.split('\n').map(l => l.trim()).filter(l => l);
+            let question = "";
+            let options = {};
+            let answers = [];
+            let explanation = "";
+            let questionFound = false;
+            let answerFound = false;
+            let currentOption = null;
+
+            lines.forEach(line => {
+                if (/^(ANS|ANSWER|ANSW)\s*[:\-\.]/i.test(line)) {
+                    let ansRaw = line.replace(/^(ANS|ANSWER|ANSW)\s*[:\-\.]\s*/i, '').trim().toUpperCase();
+                    answers = ansRaw.split(/[\s,\/]+/).filter(a => a.trim() !== "");
+                    answerFound = true;
+                    currentOption = null;
+                }
+                else if (/^(EXP|EXPLANATION|REASON)\s*[:\-\.]/i.test(line)) {
+                    explanation = line.replace(/^(EXP|EXPLANATION|REASON)\s*[:\-\.]\s*/i, '').trim();
+                    answerFound = true; 
+                    currentOption = null;
+                }
+                else {
+                    if (!questionFound) {
+                        questionFound = true;
+                        question = line.replace(/^(?:Q(?:UESTION)?\s*[:\-\.]\s*|\d+\s*[\.\)\-]\s*)/i, '').trim();
+                    } else {
+                        const optMatch = line.match(/^([a-zA-Z0-9])\s*[\)\.\:\-]\s*(.*)/);
+                        
+                        if (optMatch) {
+                            const key = optMatch[1].toUpperCase();
+                            options[key] = optMatch[2].trim();
+                            currentOption = key;
+                        } else if (answerFound) {
+                            explanation += (explanation ? "\n" : "") + line.trim();
+                        } else {
+                            if (currentOption) {
+                                options[currentOption] += " " + line.trim();
+                            } else {
+                                question += (question ? "\n" : "") + line.trim();
+                            }
+                        }
+                    }
+                }
+            });
+
+            if ((question || Object.keys(options).length > 0) && answers.length > 0) {
+                questionsData.push({ question, options, answers, explanation });
+            }
+        });
+
+        // Update real-time UI status
+        const status = document.getElementById('parse-status');
+        const examTab = document.getElementById('tab-exam-btn');
+        
+        if (questionsData.length > 0) {
+            status.innerHTML = `✅ ${questionsData.length} valid question${questionsData.length > 1 ? 's' : ''} detected. Ready for exam!`;
+            status.classList.add('success');
+            
+            examTab.disabled = false;
+            examTab.style.opacity = 1;
+            examTab.style.cursor = 'pointer';
+        } else {
+            status.innerHTML = `⚠️ No valid questions detected yet. Please check your format.`;
+            status.classList.remove('success');
+            
+            examTab.disabled = true;
+            examTab.style.opacity = 0.5;
+            examTab.style.cursor = 'not-allowed';
+        }
+    }
+
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function startExam() {
+        document.getElementById('exam-pre').style.display = 'none';
+        document.getElementById('exam-result').style.display = 'none';
+        document.getElementById('exam-active').style.display = 'block';
+        
+        activeExamQuestions = [...questionsData];
+        const isRandomized = document.getElementById('randomize-qs').checked;
+        if (isRandomized) {
+            shuffleArray(activeExamQuestions);
+        }
+
+        const container = document.getElementById('questions-container');
+        container.innerHTML = "";
+
+        activeExamQuestions.forEach((q, index) => {
+            let qTextDisplay = q.question ? q.question : "[No Question Text Provided]";
+            let isMultiple = q.answers.length > 1;
+            let inputType = isMultiple ? "checkbox" : "radio";
+            let multipleHint = isMultiple ? `<span class="multiple-hint">(Select all that apply)</span>` : "";
+
+            let html = `<div class="question-block">
+                <div class="question-text">${index + 1}. ${qTextDisplay} ${multipleHint}</div>`;
+            
+            for (const [key, value] of Object.entries(q.options)) {
+                let optTextDisplay = value ? value : "";
+                html += `<label class="option-label">
+                    <input type="${inputType}" name="q${index}" value="${key}"> 
+                    <strong>${key})</strong>&nbsp;${optTextDisplay}
+                </label>`;
+            }
+            html += `</div>`;
+            container.innerHTML += html;
+        });
+
+        const minutes = parseFloat(document.getElementById('time-limit').value);
+        if (minutes > 0) {
+            timeRemaining = minutes * 60;
+            updateTimerDisplay();
+            document.getElementById('timer').style.display = 'block';
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    alert("Time is up! Submitting exam automatically.");
+                    submitExam();
+                }
+            }, 1000);
+        } else {
+            document.getElementById('timer').style.display = 'none';
+        }
+    }
+
+    function updateTimerDisplay() {
+        const m = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+        const s = (timeRemaining % 60).toString().padStart(2, '0');
+        document.getElementById('timer').innerText = `${m}:${s}`;
+    }
+
+    function submitExam() {
+        if (timerInterval) clearInterval(timerInterval);
+        
+        let score = 0;
+        const reviewContainer = document.getElementById('review-container');
+        reviewContainer.innerHTML = "<h3 style='margin-bottom: 24px; font-size: 24px; border-bottom: 2px solid #E5E7EB; padding-bottom: 10px;'>Review Your Answers:</h3>";
+
+        activeExamQuestions.forEach((q, index) => {
+            const selectedNodes = document.querySelectorAll(`input[name="q${index}"]:checked`);
+            
+            const userAnswers = Array.from(selectedNodes).map(n => n.value).sort();
+            const correctAnswers = [...q.answers].sort();
+            
+            const isCorrect = userAnswers.length === correctAnswers.length && 
+                              userAnswers.every((val, i) => val === correctAnswers[i]);
+            
+            if (isCorrect) score++;
+
+            let qTextDisplay = q.question ? q.question : "[No Question Text Provided]";
+            
+            let userDisplay = userAnswers.length > 0 ? userAnswers.join(', ') : 'Skipped';
+            let correctDisplay = correctAnswers.join(', ');
+
+            let reviewHtml = `<div class="question-block" style="border-left: 5px solid ${isCorrect ? '#059669' : '#DC2626'}">
+                <div class="question-text">${index + 1}. ${qTextDisplay}</div>
+                <div style="font-size: 15px; margin-top: 12px;">
+                    Your answer: <strong style="color: ${isCorrect ? '#059669' : '#DC2626'}">${userDisplay}</strong> <br>
+                    Correct answer: <strong>${correctDisplay}</strong>
+                </div>`;
+            
+            if (q.explanation) {
+                reviewHtml += `<div class="explanation"><strong>Explanation:</strong><br>${q.explanation}</div>`;
+            }
+
+            reviewHtml += `</div>`;
+            reviewContainer.innerHTML += reviewHtml;
+        });
+
+        document.getElementById('exam-active').style.display = 'none';
+        document.getElementById('exam-result').style.display = 'block';
+        
+        const percentage = Math.round((score / activeExamQuestions.length) * 100);
+        document.getElementById('score-display').innerText = `${score} / ${activeExamQuestions.length}`;
+        document.getElementById('percentage-display').innerText = `${percentage}%`;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetExam() {
+        document.getElementById('exam-result').style.display = 'none';
+        document.getElementById('exam-pre').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
