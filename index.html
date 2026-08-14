@@ -96,14 +96,32 @@
         button:hover {
             background: var(--primary-hover);
         }
+        
+        /* Workflow Steps */
+        .step-header {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+        }
+
+        .workflow-step {
+            margin-bottom: 32px;
+        }
 
         .instructions {
             background: #EFF6FF;
             padding: 12px;
             border-radius: 4px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             font-size: 14px;
             line-height: 1.6;
+            color: #1E3A8A;
         }
 
         /* AI Prompt Box */
@@ -112,20 +130,11 @@
             border: 1px dashed #94A3B8;
             padding: 16px;
             border-radius: 6px;
-            margin-bottom: 20px;
-        }
-
-        .ai-prompt-box h4 {
-            margin: 0 0 8px 0;
-            color: #334155;
-            display: flex;
-            align-items: center;
-            gap: 6px;
         }
 
         .ai-textarea {
-            height: 120px;
-            background: #F1F5F9;
+            height: 140px;
+            background: #FFFFFF;
             color: #475569;
             border: 1px solid #CBD5E1;
             margin-bottom: 0;
@@ -267,10 +276,14 @@
     <!-- TAB 1: SETUP -->
     <div id="tab-setup" class="content active">
         
-        <div class="ai-prompt-box">
-            <h4>🤖 Generate Questions with AI</h4>
-            <p style="margin-top: 0; font-size: 14px; color: #475569;">Copy this prompt into ChatGPT, Claude, or Gemini. Paste the result below.</p>
-            <textarea id="ai-prompt-text" class="ai-textarea" readonly>Act as an expert quiz creator. Generate 50 multiple-choice questions about [INSERT TOPIC HERE]. 
+        <!-- Workflow Step 1 -->
+        <div class="workflow-step">
+            <h3 class="step-header">Step 1: Generate Questions using AI</h3>
+            <div class="ai-prompt-box">
+                <p style="margin-top: 0; font-size: 14px; color: #475569; margin-bottom: 12px;">Copy the prompt below and paste it into ChatGPT, Claude, or Gemini. (Change the topic to whatever you need!)</p>
+                <textarea id="ai-prompt-text" class="ai-textarea" readonly>Act as an expert quiz creator. Generate 50 multiple-choice questions about [INSERT TOPIC HERE]. 
+
+Mix it if needed: some questions can have 1 correct answer, and others can have multiple correct answers!
 
 Strictly follow this exact format for every question. Separate each question block with a single blank line:
 
@@ -279,30 +292,26 @@ A. [Option 1]
 B. [Option 2]
 C. [Option 3]
 D. [Option 4]
-Ans: [Correct option letter. If multiple are correct, separate with a comma, e.g., A, C]
+Ans: [Correct option(s) - e.g., A or A, C]
 Explanation: [Brief explanation of why the answer is correct]</textarea>
-            <button class="copy-btn" onclick="copyAIPrompt()" id="copy-btn-el">📋 Copy Prompt</button>
+                <button class="copy-btn" onclick="copyAIPrompt()" id="copy-btn-el">📋 Copy Prompt</button>
+            </div>
         </div>
-        
-        <textarea id="mcq-input" oninput="parseQuestions()" placeholder="Paste your formatted MCQs here...">1. Which language runs natively in a web browser?
-a. Java
-b. C
-c. Python
-d. JavaScript
-Ans: d
-JavaScript is the native language of the web.
 
-2. Which of the following are primary colors in painting?
-A: Red
-B: Green
-C: Blue
-D: Yellow
-Ans: A, C, D
-The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
-        
-        <div id="parse-status" class="status-bar">
-            <span>Analyzing text...</span>
+        <!-- Workflow Step 2 -->
+        <div class="workflow-step" style="margin-bottom: 0;">
+            <h3 class="step-header">Step 2: Paste Your Questions</h3>
+            <div class="instructions">
+                Paste the AI's response directly into the box below.
+            </div>
+            
+            <textarea id="mcq-input" oninput="parseQuestions()" placeholder="Paste the AI generated MCQs here..."></textarea>
+            
+            <div id="parse-status" class="status-bar">
+                <span>Analyzing text...</span>
+            </div>
         </div>
+
     </div>
 
     <!-- TAB 2: EXAM -->
@@ -475,6 +484,36 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
             });
 
             if ((question || Object.keys(options).length > 0) && answers.length > 0) {
+                const optionKeys = Object.keys(options);
+                
+                // SMART ERROR CORRECTION LAYER
+                answers = answers.map(ans => {
+                    // 1. Direct match (e.g. AI wrote "C" and option "C" exists)
+                    if (optionKeys.includes(ans)) return ans;
+                    
+                    // 2. Text match (e.g. AI wrote "Ans: Python" instead of "Ans: C")
+                    const textMatch = optionKeys.find(k => options[k].toUpperCase().trim() === ans.toUpperCase().trim());
+                    if (textMatch) return textMatch;
+
+                    // 3. Number-to-Letter mapping (e.g. AI wrote "3" but options are A, B, C)
+                    if (/^\d+$/.test(ans)) {
+                        const idx = parseInt(ans) - 1;
+                        if (idx >= 0 && idx < optionKeys.length) return optionKeys[idx];
+                    }
+                    
+                    // 4. Letter-to-Number mapping (e.g. AI wrote "C" but options are 1, 2, 3)
+                    if (/^[A-Z]$/i.test(ans)) {
+                        const idx = ans.toUpperCase().charCodeAt(0) - 65;
+                        if (idx >= 0 && idx < optionKeys.length) return optionKeys[idx];
+                    }
+                    
+                    // Fallback
+                    return ans;
+                });
+
+                // Remove duplicate answers just in case auto-correct doubled up
+                answers = [...new Set(answers)];
+
                 questionsData.push({ question, options, answers, explanation });
             }
         });
@@ -483,13 +522,13 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
         const examTab = document.getElementById('tab-exam-btn');
         
         if (questionsData.length > 0) {
-            status.innerHTML = `✅ ${questionsData.length} valid question${questionsData.length > 1 ? 's' : ''} detected. (Auto-saved)`;
+            status.innerHTML = `✅ ${questionsData.length} question${questionsData.length > 1 ? 's' : ''} detected. (Auto-saved)`;
             status.classList.add('success');
             examTab.disabled = false;
             examTab.style.opacity = 1;
             examTab.style.cursor = 'pointer';
         } else {
-            status.innerHTML = `⚠️ No valid questions detected yet. Please check your format.`;
+            status.innerHTML = `⚠️ No questions detected. Please paste formatted text.`;
             status.classList.remove('success');
             examTab.disabled = true;
             examTab.style.opacity = 0.5;
@@ -504,7 +543,6 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
         }
     }
 
-    // Renders the DOM for active questions
     function renderActiveQuestions() {
         const container = document.getElementById('questions-container');
         container.innerHTML = "";
@@ -520,7 +558,6 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
             
             for (const [key, value] of Object.entries(q.options)) {
                 let optTextDisplay = value ? value : "";
-                // Added onchange to instantly save user's selection to localStorage
                 html += `<label class="option-label">
                     <input type="${inputType}" name="q${index}" value="${key}" onchange="saveUserAnswers()"> 
                     <strong>${key})</strong>&nbsp;${optTextDisplay}
@@ -531,7 +568,6 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
         });
     }
 
-    // Saves current selections to localStorage
     function saveUserAnswers() {
         let answers = {};
         activeExamQuestions.forEach((q, index) => {
@@ -541,7 +577,6 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
         localStorage.setItem('mcq_user_answers', JSON.stringify(answers));
     }
 
-    // Restores user selections from localStorage onto the DOM
     function restoreUserAnswers() {
         const savedAnswers = JSON.parse(localStorage.getItem('mcq_user_answers') || '{}');
         Object.keys(savedAnswers).forEach(index => {
@@ -560,9 +595,8 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
             shuffleArray(activeExamQuestions);
         }
         
-        // Save the frozen array so order remains constant on refresh
         localStorage.setItem('mcq_active_questions', JSON.stringify(activeExamQuestions));
-        localStorage.setItem('mcq_user_answers', '{}'); // clear old answers
+        localStorage.setItem('mcq_user_answers', '{}'); 
 
         document.getElementById('exam-pre').style.display = 'none';
         document.getElementById('exam-result').style.display = 'none';
@@ -582,7 +616,6 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
         }
     }
 
-    // Helper to resume active exam on page load
     function restoreActiveExam() {
         document.getElementById('exam-pre').style.display = 'none';
         document.getElementById('exam-result').style.display = 'none';
@@ -601,12 +634,11 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
         }
     }
 
-    // Helper to resume result view on page load
     function restoreResultView() {
         activeExamQuestions = JSON.parse(localStorage.getItem('mcq_active_questions') || '[]');
         renderActiveQuestions();
         restoreUserAnswers();
-        submitExam(); // Grade it immediately without jumping views visually
+        submitExam(); 
     }
 
     function startTimerLogic() {
@@ -617,7 +649,7 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
         
         timerInterval = setInterval(() => {
             timeRemaining--;
-            localStorage.setItem('mcq_time_remaining', timeRemaining); // Save tick
+            localStorage.setItem('mcq_time_remaining', timeRemaining);
             updateTimerDisplay();
             
             if (timeRemaining <= 0) {
@@ -636,8 +668,6 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
 
     function submitExam() {
         if (timerInterval) clearInterval(timerInterval);
-        
-        // Save that we are now in the results view
         localStorage.setItem('mcq_exam_view', 'result');
         
         let score = 0;
@@ -683,7 +713,6 @@ The primary colors in traditional art are Red, Yellow, and Blue.</textarea>
     }
 
     function resetExam() {
-        // Clear all the saved active-exam data to start fresh
         localStorage.removeItem('mcq_exam_view');
         localStorage.removeItem('mcq_active_questions');
         localStorage.removeItem('mcq_user_answers');
