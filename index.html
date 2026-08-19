@@ -712,7 +712,7 @@ Explanation: [Brief explanation]</textarea>
         rawText = rawText.replace(/\b(ANS|ANSWER|ANSW)\s*[:\-\.]/gi, '\nAns: ');
         rawText = rawText.replace(/\b(EXP|EXPLANATION|REASON)\s*[:\-\.]/gi, '\nExplanation: ');
         rawText = rawText.replace(/(^|\s+)([A-E])[\.\)\-]\s+/g, '\n$2) ');
-        rawText = rawText.replace(/(^|\s+)(\d{1,3})[\.\)\-]\s+(?=[A-Z])/g, '\n\n$2. ');
+        // rawText = rawText.replace(/(^|\s+)(\d{1,3})[\.\)\-]\s+(?=[A-Z])/g, '\n\n$2. ');
 
         let lines = rawText.split('\n');
         questionsData = [];
