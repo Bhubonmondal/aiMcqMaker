@@ -1,9 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MCQ Test Generator</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
+
     <style>
         :root {
             --primary: #4F46E5;
@@ -13,6 +19,15 @@
             --text: #1F2937;
             --border: #E5E7EB;
         }
+
+        [data-theme="dark"] {
+            --primary: #818CF8;
+            --primary-hover: #6366F1;
+            --bg: #111827;
+            --surface: #1F2937;
+            --text: #F9FAFB;
+            --border: #374151;
+        }
         
         body {
             font-family: system-ui, -apple-system, sans-serif;
@@ -20,6 +35,26 @@
             color: var(--text);
             margin: 0;
             padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .header-top {
+            max-width: 800px;
+            margin: 0 auto 12px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .theme-toggle {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         .container {
@@ -28,14 +63,14 @@
             background: var(--surface);
             border-radius: 8px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
+            transition: background-color 0.3s;
         }
 
-        /* Tabs */
         .tabs {
             display: flex;
             background: var(--surface);
             border-bottom: 1px solid var(--border);
+            border-radius: 8px 8px 0 0;
         }
         
         .tab {
@@ -49,7 +84,11 @@
             border-bottom: 3px solid transparent;
             transition: all 0.2s;
             font-size: 16px;
+            color: var(--text);
         }
+
+        .tab:first-child { border-radius: 8px 0 0 0; }
+        .tab:last-child { border-radius: 0 8px 0 0; }
 
         .tab.active {
             background: var(--surface);
@@ -57,7 +96,6 @@
             color: var(--primary);
         }
 
-        /* Content Areas */
         .content {
             display: none;
             padding: 24px;
@@ -67,7 +105,6 @@
             display: block;
         }
 
-        /* Form Elements */
         textarea {
             width: 100%;
             height: 300px;
@@ -78,6 +115,8 @@
             font-size: 14px;
             box-sizing: border-box;
             resize: vertical;
+            background: var(--bg);
+            color: var(--text);
         }
 
         button {
@@ -96,8 +135,16 @@
         button:hover {
             background: var(--primary-hover);
         }
+
+        .secondary-btn {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .secondary-btn:hover {
+            background: var(--border);
+        }
         
-        /* Workflow Steps */
         .step-header {
             font-size: 18px;
             font-weight: 700;
@@ -110,47 +157,45 @@
             padding-bottom: 8px;
         }
 
-        .workflow-step {
-            margin-bottom: 32px;
-        }
+        .workflow-step { margin-bottom: 32px; }
 
         .instructions {
-            background: #EFF6FF;
+            background: rgba(59, 130, 246, 0.1);
             padding: 12px;
             border-radius: 4px;
             margin-bottom: 12px;
             font-size: 14px;
             line-height: 1.6;
-            color: #1E3A8A;
         }
 
-        /* AI Prompt Box */
         .ai-prompt-box {
-            background: #F8FAFC;
-            border: 1px dashed #94A3B8;
+            background: var(--bg);
+            border: 1px dashed var(--border);
             padding: 16px;
             border-radius: 6px;
         }
 
         .ai-textarea {
             height: 140px;
-            background: #FFFFFF;
-            color: #475569;
-            border: 1px solid #CBD5E1;
             margin-bottom: 0;
             font-size: 13px;
         }
 
-        .copy-btn {
-            background: #10B981;
-            margin-top: 8px;
+        .copy-btn { background: #10B981; margin-top: 8px; }
+        .copy-btn:hover { background: #059669; }
+
+        .file-upload-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
         }
 
-        .copy-btn:hover {
-            background: #059669;
+        input[type="file"] {
+            font-size: 14px;
+            color: var(--text);
         }
 
-        /* Live Status Indicator */
         .status-bar {
             margin-top: 12px;
             padding: 10px;
@@ -160,31 +205,55 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            background: #F3F4F6;
-            color: #4B5563;
+            background: var(--bg);
+            color: var(--text);
             transition: all 0.3s;
         }
 
         .status-bar.success {
-            background: #D1FAE5;
-            color: #065F46;
+            background: rgba(16, 185, 129, 0.2);
+            color: #059669;
         }
 
-        /* Exam Setup */
+        .history-container {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 2px solid var(--border);
+        }
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .history-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .history-item:hover { background: var(--border); }
+        .delete-history {
+            color: #DC2626;
+            margin-left: 8px;
+            font-weight: bold;
+        }
+
         .setup-row {
             display: flex;
             align-items: center;
             gap: 12px;
             margin-bottom: 16px;
         }
-
-        input[type="number"] {
+        input[type="number"], select {
             padding: 8px;
             border: 1px solid var(--border);
             border-radius: 4px;
-            width: 150px;
+            background: var(--bg);
+            color: var(--text);
         }
-
         input[type="checkbox"], input[type="radio"] {
             width: 16px;
             height: 16px;
@@ -192,43 +261,42 @@
             margin-right: 8px;
         }
 
-        /* Active Exam */
         .timer-header {
+            position: sticky;
+            top: 0;
+            background: var(--surface);
+            z-index: 100;
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 24px;
-            padding-bottom: 12px;
+            padding: 16px 24px;
             border-bottom: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-left: -24px;
+            margin-right: -24px;
+            margin-top: -24px;
+            border-radius: 8px 8px 0 0;
         }
-
-        #timer {
-            font-size: 24px;
-            font-weight: bold;
-            color: #DC2626;
-        }
-
+        #timer { font-size: 24px; font-weight: bold; color: #DC2626; }
         .question-block {
             margin-bottom: 24px;
             padding: 16px;
             background: var(--bg);
             border-radius: 6px;
         }
-
         .question-text {
             font-weight: 600;
             margin-bottom: 12px;
             font-size: 16px;
             white-space: pre-wrap;
         }
-
         .multiple-hint {
             font-size: 13px;
             color: #6B7280;
             font-weight: normal;
             margin-left: 8px;
         }
-
         .option-label {
             display: flex;
             align-items: center;
@@ -237,51 +305,67 @@
             padding: 6px;
             border-radius: 4px;
         }
-        
-        .option-label:hover {
-            background-color: #E5E7EB;
-        }
-
-        .result-block {
-            text-align: center;
-            padding: 20px;
-        }
-
-        .score {
-            font-size: 48px;
-            font-weight: bold;
-            color: var(--primary);
-        }
+        .option-label:hover { background-color: var(--border); }
+        .result-block { text-align: center; padding: 20px; }
+        .score { font-size: 48px; font-weight: bold; color: var(--primary); }
         
         .explanation {
             margin-top: 12px;
             padding: 10px;
-            background: #FEF3C7;
+            background: rgba(217, 119, 6, 0.1);
             border-left: 4px solid #D97706;
-            color: #92400E;
+            color: var(--text);
             font-size: 14px;
             border-radius: 0 4px 4px 0;
             white-space: pre-wrap;
+        }
+
+        .check-btn { background-color: #3B82F6; padding: 6px 12px; margin-top: 10px; }
+        .check-btn:hover { background-color: #2563EB; }
+
+        @media print {
+            body, .container, .question-block, .content { 
+                background: white !important; 
+                background-color: white !important;
+                color: black !important; 
+                padding: 0 !important; 
+                margin: 0 !important;
+            }
+            .header-top, .tabs, .ai-prompt-box, .status-bar, button, .history-container, .file-upload-row, .instructions, .step-header, .timer-header {
+                display: none !important;
+            }
+            .container { box-shadow: none !important; border: none !important; max-width: 100% !important; width: 100% !important; }
+            #tab-setup { display: none !important; }
+            #tab-exam { display: block !important; }
+            #exam-pre { display: none !important; }
+            #exam-active { display: block !important; margin-top: 0 !important; }
+            .question-block { page-break-inside: avoid; border-bottom: 1px solid #ccc !important; padding-bottom: 20px !important; margin-bottom: 20px !important; }
+            .option-label { color: black !important; }
+            input[type="radio"], input[type="checkbox"] { border: 1px solid black !important; }
         }
     </style>
 </head>
 <body>
 
+<div class="header-top">
+    <h2>Expert MCQ</h2>
+    <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">Dark Mode</button>
+</div>
+
 <div class="container">
     <div class="tabs">
-        <button class="tab active" onclick="switchTab('setup')">1. Setup MCQs</button>
-        <button class="tab" onclick="switchTab('exam')" id="tab-exam-btn" disabled style="opacity: 0.5; cursor: not-allowed;">2. Take Exam</button>
+        <button class="tab active" onclick="switchTab('setup')">1. Setup MCQs (Before)</button>
+        <button class="tab" onclick="switchTab('exam')" id="tab-exam-btn" disabled style="opacity: 0.5; cursor: not-allowed;">2. Take Exam (After)</button>
     </div>
 
     <!-- TAB 1: SETUP -->
     <div id="tab-setup" class="content active">
         
-        <!-- Workflow Step 1 -->
         <div class="workflow-step">
-            <h3 class="step-header">Step 1: Generate Questions using AI (topic of your choice)</h3>
+            <h3 class="step-header">Step 1: Generate Questions from AI (Of your topic)</h3>
             <div class="ai-prompt-box">
-                <p style="margin-top: 0; font-size: 14px; color: #475569; margin-bottom: 12px;">Copy the prompt below and paste it into ChatGPT, Claude, or Gemini. (Change the topic to whatever you need!)</p>
-                <textarea id="ai-prompt-text" class="ai-textarea" readonly>Act as an expert quiz creator. Generate 50 multiple-choice questions about [INSERT TOPIC HERE]. 
+                <p style="margin-top: 0; margin-bottom: 12px;">Copy the prompt below and paste it into ChatGPT, Claude, or Gemini.</p>
+                <textarea id="ai-prompt-text" class="ai-textarea" readonly>Act as an expert quiz creator. Generate 25 multiple-choice questions about [INSERT TOPIC HERE]. 
 
 Mix it if needed: some questions can have 1 correct answer, and others can have multiple correct answers!
 
@@ -294,21 +378,36 @@ C. [Option 3]
 D. [Option 4]
 Ans: [Correct option(s) - e.g., A or A, C]
 Explanation: [Brief explanation of why the answer is correct]</textarea>
-                <button class="copy-btn" onclick="copyAIPrompt()" id="copy-btn-el">📋 Copy Prompt</button>
+                <button class="copy-btn" onclick="copyAIPrompt()" id="copy-btn-el">Copy Prompt</button>
             </div>
         </div>
 
-        <!-- Workflow Step 2 -->
         <div class="workflow-step" style="margin-bottom: 0;">
-            <h3 class="step-header">Step 2: Paste The Response</h3>
+            <h3 class="step-header">Step 2: Paste or Upload</h3>
             <div class="instructions">
-                Paste the AI's response directly into the box below.
+                Paste the AI's response directly into the box below. or upload a PDF, TXT otherwise import a saved <b>.mcq</b> file.
             </div>
             
-            <textarea id="mcq-input" oninput="parseQuestions()" placeholder="Paste the AI generated MCQs here..."></textarea>
+            <div class="file-upload-row">
+                <input type="file" id="file-upload" accept=".pdf,.txt,.md,.mcq,.json" onchange="handleFileUpload(event)">
+            </div>
+            
+            <textarea id="mcq-input" oninput="handleInputEdit()" placeholder="Paste the AI generated MCQs here..."></textarea>
             
             <div id="parse-status" class="status-bar">
                 <span>Analyzing text...</span>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 16px;">
+                <button onclick="saveCurrentDeck()" class="secondary-btn">Save to History</button>
+                <button onclick="exportExamFile()" class="secondary-btn">Export .MCQ File</button>
+            </div>
+        </div>
+
+        <div class="history-container">
+            <h3 class="step-header">Saved Exams</h3>
+            <div class="history-list" id="history-list">
+                <!-- Saved items injected here -->
             </div>
         </div>
 
@@ -326,20 +425,31 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
             </div>
             
             <div class="setup-row">
+                <label>Reveal Answers:</label>
+                <select id="reveal-mode" onchange="saveExamSettings()">
+                    <option value="end">At the end of the exam</option>
+                    <option value="instant">Instantly after each question</option>
+                </select>
+            </div>
+
+            <div class="setup-row">
                 <input type="checkbox" id="randomize-qs" onchange="saveExamSettings()">
                 <label for="randomize-qs" style="font-weight: 500; cursor: pointer;">Randomize question order</label>
             </div>
             
-            <button onclick="startExam()">Start Exam</button>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button onclick="startExam()">Start Exam</button>
+                <button onclick="printWorksheet()" class="secondary-btn">Print Worksheet</button>
+            </div>
         </div>
 
         <div id="exam-active" style="display: none;">
             <div class="timer-header">
-                <h2>Exam in Progress</h2>
+                <h2 style="margin: 0;">Exam in Progress</h2>
                 <div id="timer">--:--</div>
             </div>
             <div id="questions-container"></div>
-            <button onclick="submitExam()" style="width: 100%; padding: 16px; font-size: 16px; margin-top: 20px;">Submit Exam</button>
+            <button onclick="submitExam()" id="submit-btn" style="width: 100%; padding: 16px; font-size: 16px; margin-top: 20px;">Submit Exam</button>
         </div>
 
         <div id="exam-result" style="display: none;" class="result-block">
@@ -358,40 +468,218 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
     let timerInterval = null;
     let timeRemaining = 0;
 
-    // Run on page load to restore saved data
     window.onload = () => {
-        // Restore Setup Texts
+        const savedTheme = localStorage.getItem('mcq_theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.getElementById('theme-btn').innerText = savedTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
+
+        renderHistory();
+
         const savedText = localStorage.getItem('mcq_saved_text');
         if (savedText !== null) document.getElementById('mcq-input').value = savedText;
 
         const savedTimer = localStorage.getItem('mcq_saved_timer');
         if (savedTimer !== null) document.getElementById('time-limit').value = savedTimer;
 
+        const savedReveal = localStorage.getItem('mcq_saved_reveal');
+        if (savedReveal !== null) document.getElementById('reveal-mode').value = savedReveal;
+
         const savedRandomize = localStorage.getItem('mcq_saved_randomize');
         if (savedRandomize !== null) document.getElementById('randomize-qs').checked = (savedRandomize === 'true');
 
         parseQuestions();
 
-        // Restore Tab State
         const savedTab = localStorage.getItem('mcq_current_tab');
-        if (savedTab === 'exam' && questionsData.length > 0) {
-            switchTab('exam');
-        } else {
-            switchTab('setup');
+        if (savedTab === 'exam' && questionsData.length > 0) switchTab('exam');
+        else switchTab('setup');
+
+        const examView = localStorage.getItem('mcq_exam_view');
+        if (examView === 'active') restoreActiveExam();
+        else if (examView === 'result') restoreResultView();
+    };
+
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('mcq_theme', next);
+        document.getElementById('theme-btn').innerText = next === 'dark' ? 'Light Mode' : 'Dark Mode';
+    }
+
+    async function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const ext = file.name.split('.').pop().toLowerCase();
+        const status = document.getElementById('parse-status');
+        status.innerHTML = `Reading ${file.name}...`;
+
+        if (ext === 'txt' || ext === 'md') {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('mcq-input').value = e.target.result;
+                parseQuestions();
+            };
+            reader.readAsText(file);
+        } else if (ext === 'pdf') {
+            try {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const typedarray = new Uint8Array(e.target.result);
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    let fullText = '';
+                    
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\n\n';
+                    }
+                    
+                    document.getElementById('mcq-input').value = fullText;
+                    parseQuestions();
+                };
+                reader.readAsArrayBuffer(file);
+            } catch (err) {
+                status.innerHTML = `Error reading PDF. Make sure it contains text, not just scanned images.`;
+            }
+        } else if (ext === 'mcq' || ext === 'json') {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.rawText) {
+                        document.getElementById('mcq-input').value = data.rawText;
+                        if (data.settings) {
+                            document.getElementById('time-limit').value = data.settings.timer || '';
+                            document.getElementById('reveal-mode').value = data.settings.revealMode || 'end';
+                            document.getElementById('randomize-qs').checked = data.settings.randomize || false;
+                            saveExamSettings();
+                        }
+                        parseQuestions();
+                        status.innerHTML = `Loaded exam file! (${questionsData.length} questions detected). (Auto-saved)`;
+                        status.classList.add('success');
+                    } else {
+                        throw new Error("Invalid MCQ format");
+                    }
+                } catch(err) {
+                    status.innerHTML = `Error reading .mcq file. It might be corrupted.`;
+                    status.classList.remove('success');
+                }
+            };
+            reader.readAsText(file);
+        }
+    }
+
+    function exportExamFile() {
+        const rawText = document.getElementById('mcq-input').value;
+        if (!rawText.trim() || questionsData.length === 0) return alert("Parse some questions first!");
+        
+        let title = prompt("Enter a filename for your exam:", "my_exam");
+        if (!title) return;
+        
+        const examData = {
+            version: 1,
+            rawText: rawText,
+            settings: {
+                timer: document.getElementById('time-limit').value,
+                revealMode: document.getElementById('reveal-mode').value,
+                randomize: document.getElementById('randomize-qs').checked
+            }
+        };
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(examData));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + ".mcq");
+        document.body.appendChild(downloadAnchorNode); 
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    function saveCurrentDeck() {
+        const text = document.getElementById('mcq-input').value;
+        if (!text.trim() || questionsData.length === 0) return alert("Parse some questions first!");
+        
+        let title = prompt("Enter a name for this exam (e.g., Biology Chapter 1):");
+        if (!title) return;
+
+        let history = JSON.parse(localStorage.getItem('mcq_history') || '[]');
+        history.push({ id: Date.now(), title, text, count: questionsData.length });
+        localStorage.setItem('mcq_history', JSON.stringify(history));
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const list = document.getElementById('history-list');
+        const history = JSON.parse(localStorage.getItem('mcq_history') || '[]');
+        
+        if (history.length === 0) {
+            list.innerHTML = '<span style="color: var(--border);">No saved exams yet.</span>';
+            return;
         }
 
-        // Restore Active Exam or Results State
-        const examView = localStorage.getItem('mcq_exam_view');
-        if (examView === 'active') {
-            restoreActiveExam();
-        } else if (examView === 'result') {
-            restoreResultView();
+        list.innerHTML = '';
+        history.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.innerHTML = `
+                <span onclick="loadHistoryItem(${index})">${item.title} (${item.count} Qs)</span>
+                <span class="delete-history" onclick="deleteHistoryItem(${index})" title="Delete">X</span>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    function loadHistoryItem(index) {
+        if (localStorage.getItem('mcq_exam_view') === 'active') {
+            if (!confirm("An exam is in progress. Loading this will restart your session. Continue?")) return;
         }
-    };
+        resetExam();
+        const history = JSON.parse(localStorage.getItem('mcq_history') || '[]');
+        document.getElementById('mcq-input').value = history[index].text;
+        parseQuestions();
+    }
+
+    function deleteHistoryItem(index) {
+        if (!confirm("Delete this saved exam?")) return;
+        let history = JSON.parse(localStorage.getItem('mcq_history') || '[]');
+        history.splice(index, 1);
+        localStorage.setItem('mcq_history', JSON.stringify(history));
+        renderHistory();
+    }
+
+    function printWorksheet() {
+        activeExamQuestions = [...questionsData];
+        renderActiveQuestions(true);
+        document.getElementById('exam-pre').style.display = 'none';
+        document.getElementById('exam-active').style.display = 'block';
+        document.getElementById('submit-btn').style.display = 'none';
+        window.print();
+        
+        document.getElementById('exam-pre').style.display = 'block';
+        document.getElementById('exam-active').style.display = 'none';
+        document.getElementById('submit-btn').style.display = 'block';
+    }
 
     function saveExamSettings() {
         localStorage.setItem('mcq_saved_timer', document.getElementById('time-limit').value);
+        localStorage.setItem('mcq_saved_reveal', document.getElementById('reveal-mode').value);
         localStorage.setItem('mcq_saved_randomize', document.getElementById('randomize-qs').checked);
+    }
+
+    function handleInputEdit() {
+        const currentView = localStorage.getItem('mcq_exam_view');
+        if (currentView === 'active') {
+            if (confirm("An exam is currently in progress. Editing the questions will restart your exam. Do you want to continue?")) {
+                resetExam();
+                parseQuestions();
+            } else {
+                document.getElementById('mcq-input').value = localStorage.getItem('mcq_saved_text') || '';
+            }
+        } else {
+            parseQuestions();
+        }
     }
 
     function copyAIPrompt() {
@@ -401,13 +689,148 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
         
         const btn = document.getElementById('copy-btn-el');
         const originalText = btn.innerText;
-        btn.innerText = '✅ Copied!';
+        btn.innerText = 'Copied!';
         btn.style.background = '#059669';
         
         setTimeout(() => {
             btn.innerText = originalText;
             btn.style.background = '#10B981';
         }, 2000);
+    }
+
+    function parseQuestions() {
+        let rawText = document.getElementById('mcq-input').value;
+        localStorage.setItem('mcq_saved_text', rawText);
+
+        rawText = rawText.replace(/\b(ANS|ANSWER|ANSW)\s*[:\-\.]/gi, '\nAns: ');
+        rawText = rawText.replace(/\b(EXP|EXPLANATION|REASON)\s*[:\-\.]/gi, '\nExplanation: ');
+        rawText = rawText.replace(/(^|\s+)([A-E])[\.\)\-]\s+/g, '\n$2) ');
+        rawText = rawText.replace(/(^|\s+)(\d{1,3})[\.\)\-]\s+(?=[A-Z])/g, '\n\n$2. ');
+
+        let lines = rawText.split('\n');
+        questionsData = [];
+        
+        let currentQ = { question: "", options: {}, answers: [], explanation: "" };
+        let currentMode = "question";
+        let currentOption = null;
+
+        function saveCurrentQuestion() {
+            if ((currentQ.question.trim() !== "" || Object.keys(currentQ.options).length > 0) && currentQ.answers.length > 0) {
+                const optionKeys = Object.keys(currentQ.options);
+                
+                let formattedAnswers = currentQ.answers.map(ans => {
+                    if (optionKeys.includes(ans)) return ans;
+                    const textMatch = optionKeys.find(k => currentQ.options[k].toUpperCase().trim() === ans.toUpperCase().trim());
+                    if (textMatch) return textMatch;
+                    if (/^\d+$/.test(ans)) {
+                        const idx = parseInt(ans) - 1;
+                        if (idx >= 0 && idx < optionKeys.length) return optionKeys[idx];
+                    }
+                    if (/^[A-Z]$/i.test(ans)) {
+                        const idx = ans.toUpperCase().charCodeAt(0) - 65;
+                        if (idx >= 0 && idx < optionKeys.length) return optionKeys[idx];
+                    }
+                    return ans;
+                });
+
+                currentQ.answers = [...new Set(formattedAnswers)];
+                questionsData.push({...currentQ});
+            }
+            currentQ = { question: "", options: {}, answers: [], explanation: "" };
+            currentMode = "question";
+            currentOption = null;
+        }
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (!line) continue;
+
+            let isAnswer = /^(ANS|ANSWER|ANSW)\s*[:\-\.]/i.test(line);
+            let isExp = /^(EXP|EXPLANATION|REASON)\s*[:\-\.]/i.test(line);
+            let isOption = /^[a-zA-Z]\s*[\)\.\:\-]\s/.test(line);
+
+            if (isAnswer) {
+                let ansRaw = line.replace(/^(ANS|ANSWER|ANSW)\s*[:\-\.]\s*/i, '').trim().toUpperCase();
+                currentQ.answers = ansRaw.split(/[\s,\/]+/).filter(a => a.trim() !== "");
+                currentMode = "answer";
+            } else if (isExp) {
+                currentQ.explanation = line.replace(/^(EXP|EXPLANATION|REASON)\s*[:\-\.]\s*/i, '').trim();
+                currentMode = "explanation";
+            } else if (isOption && currentMode !== "answer" && currentMode !== "explanation") {
+                const optMatch = line.match(/^([a-zA-Z])\s*[\)\.\:\-]\s*(.*)/);
+                if (optMatch) {
+                    currentMode = "option";
+                    const key = optMatch[1].toUpperCase();
+                    currentQ.options[key] = optMatch[2].trim();
+                    currentOption = key;
+                }
+            } else {
+                let isNewQuestion = false;
+                let isQuestionStart = /^\d+\s*[\.\)\-]\s/.test(line);
+                
+                if (currentQ.answers.length > 0) {
+                    if (isQuestionStart) {
+                        isNewQuestion = true;
+                    } else {
+                        // FIX: Increased lookahead from 5 lines to 40 lines to catch options 
+                        // that appear deep beneath multiline code snippets or blank lines.
+                        for(let j = i + 1; j < Math.min(i + 40, lines.length); j++) {
+                            let lookaheadLine = lines[j].trim();
+                            if (!lookaheadLine) continue;
+                            
+                            if (/^\d+\s*[\.\)\-]\s/.test(lookaheadLine)) {
+                                isNewQuestion = true;
+                                break;
+                            }
+                            if (/^[a-zA-Z]\s*[\)\.\:\-]\s/.test(lookaheadLine)) {
+                                isNewQuestion = true;
+                                break;
+                            }
+                            if (/^(ANS|ANSWER|ANSW|EXP|EXPLANATION|REASON)\s*[:\-\.]/i.test(lookaheadLine)) {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (isNewQuestion) {
+                    saveCurrentQuestion();
+                    currentMode = "question";
+                    currentQ.question = line.replace(/^\d+\s*[\.\)\-]\s*/, '').trim();
+                } else {
+                    if (currentQ.answers.length > 0) {
+                        currentMode = "explanation";
+                        currentQ.explanation += (currentQ.explanation ? "\n" : "") + line;
+                    } else {
+                        if (currentMode === "question") {
+                            let qText = line.replace(/^\d+\s*[\.\)\-]\s*/, '').trim();
+                            currentQ.question += (currentQ.question ? "\n" : "") + qText;
+                        } else if (currentMode === "option") {
+                            currentQ.options[currentOption] += " " + line;
+                        }
+                    }
+                }
+            }
+        }
+        
+        saveCurrentQuestion();
+
+        const status = document.getElementById('parse-status');
+        const examTab = document.getElementById('tab-exam-btn');
+        
+        if (questionsData.length > 0) {
+            status.innerHTML = `${questionsData.length} question${questionsData.length > 1 ? 's' : ''} detected. (Auto-saved)`;
+            status.classList.add('success');
+            examTab.disabled = false;
+            examTab.style.opacity = 1;
+            examTab.style.cursor = 'pointer';
+        } else {
+            status.innerHTML = `No questions detected. Please paste formatted text.`;
+            status.classList.remove('success');
+            examTab.disabled = true;
+            examTab.style.opacity = 0.5;
+            examTab.style.cursor = 'not-allowed';
+        }
     }
 
     function switchTab(tabName) {
@@ -428,114 +851,6 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
         }
     }
 
-    function parseQuestions() {
-        const text = document.getElementById('mcq-input').value;
-        localStorage.setItem('mcq_saved_text', text);
-
-        const blocks = text.split(/\n\s*\n|\n(?=(?:Q(?:UESTION)?\s*\d*[:\-\.]|\d+\s*[\.\)\-])\s+)/i);
-        questionsData = [];
-
-        blocks.forEach(block => {
-            if (!block.trim()) return;
-            
-            const lines = block.split('\n').map(l => l.trim()).filter(l => l);
-            let question = "";
-            let options = {};
-            let answers = [];
-            let explanation = "";
-            let questionFound = false;
-            let answerFound = false;
-            let currentOption = null;
-
-            lines.forEach(line => {
-                if (/^(ANS|ANSWER|ANSW)\s*[:\-\.]/i.test(line)) {
-                    let ansRaw = line.replace(/^(ANS|ANSWER|ANSW)\s*[:\-\.]\s*/i, '').trim().toUpperCase();
-                    answers = ansRaw.split(/[\s,\/]+/).filter(a => a.trim() !== "");
-                    answerFound = true;
-                    currentOption = null;
-                }
-                else if (/^(EXP|EXPLANATION|REASON)\s*[:\-\.]/i.test(line)) {
-                    explanation = line.replace(/^(EXP|EXPLANATION|REASON)\s*[:\-\.]\s*/i, '').trim();
-                    answerFound = true; 
-                    currentOption = null;
-                }
-                else {
-                    if (!questionFound) {
-                        questionFound = true;
-                        question = line.replace(/^(?:Q(?:UESTION)?\s*[:\-\.]\s*|\d+\s*[\.\)\-]\s*)/i, '').trim();
-                    } else {
-                        const optMatch = line.match(/^([a-zA-Z0-9])\s*[\)\.\:\-]\s*(.*)/);
-                        
-                        if (optMatch) {
-                            const key = optMatch[1].toUpperCase();
-                            options[key] = optMatch[2].trim();
-                            currentOption = key;
-                        } else if (answerFound) {
-                            explanation += (explanation ? "\n" : "") + line.trim();
-                        } else {
-                            if (currentOption) {
-                                options[currentOption] += " " + line.trim();
-                            } else {
-                                question += (question ? "\n" : "") + line.trim();
-                            }
-                        }
-                    }
-                }
-            });
-
-            if ((question || Object.keys(options).length > 0) && answers.length > 0) {
-                const optionKeys = Object.keys(options);
-                
-                // SMART ERROR CORRECTION LAYER
-                answers = answers.map(ans => {
-                    // 1. Direct match (e.g. AI wrote "C" and option "C" exists)
-                    if (optionKeys.includes(ans)) return ans;
-                    
-                    // 2. Text match (e.g. AI wrote "Ans: Python" instead of "Ans: C")
-                    const textMatch = optionKeys.find(k => options[k].toUpperCase().trim() === ans.toUpperCase().trim());
-                    if (textMatch) return textMatch;
-
-                    // 3. Number-to-Letter mapping (e.g. AI wrote "3" but options are A, B, C)
-                    if (/^\d+$/.test(ans)) {
-                        const idx = parseInt(ans) - 1;
-                        if (idx >= 0 && idx < optionKeys.length) return optionKeys[idx];
-                    }
-                    
-                    // 4. Letter-to-Number mapping (e.g. AI wrote "C" but options are 1, 2, 3)
-                    if (/^[A-Z]$/i.test(ans)) {
-                        const idx = ans.toUpperCase().charCodeAt(0) - 65;
-                        if (idx >= 0 && idx < optionKeys.length) return optionKeys[idx];
-                    }
-                    
-                    // Fallback
-                    return ans;
-                });
-
-                // Remove duplicate answers just in case auto-correct doubled up
-                answers = [...new Set(answers)];
-
-                questionsData.push({ question, options, answers, explanation });
-            }
-        });
-
-        const status = document.getElementById('parse-status');
-        const examTab = document.getElementById('tab-exam-btn');
-        
-        if (questionsData.length > 0) {
-            status.innerHTML = `✅ ${questionsData.length} question${questionsData.length > 1 ? 's' : ''} detected. (Auto-saved)`;
-            status.classList.add('success');
-            examTab.disabled = false;
-            examTab.style.opacity = 1;
-            examTab.style.cursor = 'pointer';
-        } else {
-            status.innerHTML = `⚠️ No questions detected. Please paste formatted text.`;
-            status.classList.remove('success');
-            examTab.disabled = true;
-            examTab.style.opacity = 0.5;
-            examTab.style.cursor = 'not-allowed';
-        }
-    }
-
     function shuffleArray(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -543,9 +858,10 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
         }
     }
 
-    function renderActiveQuestions() {
+    function renderActiveQuestions(isPrintMode = false) {
         const container = document.getElementById('questions-container');
         container.innerHTML = "";
+        const revealMode = document.getElementById('reveal-mode').value;
 
         activeExamQuestions.forEach((q, index) => {
             let qTextDisplay = q.question ? q.question : "[No Question Text Provided]";
@@ -553,7 +869,7 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
             let inputType = isMultiple ? "checkbox" : "radio";
             let multipleHint = isMultiple ? `<span class="multiple-hint">(Select all that apply)</span>` : "";
 
-            let html = `<div class="question-block">
+            let html = `<div class="question-block" id="qb-${index}">
                 <div class="question-text">${index + 1}. ${qTextDisplay} ${multipleHint}</div>`;
             
             for (const [key, value] of Object.entries(q.options)) {
@@ -563,27 +879,72 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
                     <strong>${key})</strong>&nbsp;${optTextDisplay}
                 </label>`;
             }
+
+            if (revealMode === 'instant' && !isPrintMode) {
+                html += `<button class="check-btn" onclick="checkSingleAnswer(${index})" id="check-btn-${index}">Check Answer</button>
+                         <div id="instant-feedback-${index}" style="display: none; margin-top: 12px; padding: 12px; border-radius: 6px;"></div>`;
+            }
+
             html += `</div>`;
             container.innerHTML += html;
         });
     }
 
+    function checkSingleAnswer(index) {
+        const q = activeExamQuestions[index];
+        const selectedNodes = document.querySelectorAll(`input[name="q${index}"]:checked`);
+        if (selectedNodes.length === 0) return alert('Please select an answer first!');
+
+        const userAnswers = Array.from(selectedNodes).map(n => n.value).sort();
+        const correctAnswers = [...q.answers].sort();
+        
+        const isCorrect = userAnswers.length === correctAnswers.length && 
+                          userAnswers.every((val, i) => val === correctAnswers[i]);
+
+        const feedbackDiv = document.getElementById(`instant-feedback-${index}`);
+        const correctDisplay = correctAnswers.join(', ');
+        
+        let feedbackHtml = `<div style="font-weight: bold; color: ${isCorrect ? '#065F46' : '#991B1B'}; margin-bottom: 8px;">
+            ${isCorrect ? 'Correct!' : 'Incorrect.'} The correct answer is <strong>${correctDisplay}</strong>.
+        </div>`;
+
+        if (q.explanation) {
+            feedbackHtml += `<div class="explanation" style="margin-top: 0; background: var(--bg);"><strong>Explanation:</strong><br>${q.explanation}</div>`;
+        }
+
+        feedbackDiv.innerHTML = feedbackHtml;
+        feedbackDiv.style.display = 'block';
+        feedbackDiv.style.backgroundColor = isCorrect ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+
+        document.getElementById(`check-btn-${index}`).style.display = 'none';
+        document.querySelectorAll(`input[name="q${index}"]`).forEach(input => input.disabled = true);
+        saveUserAnswers();
+    }
+
     function saveUserAnswers() {
         let answers = {};
+        let locked = {};
         activeExamQuestions.forEach((q, index) => {
             const selectedNodes = document.querySelectorAll(`input[name="q${index}"]:checked`);
             answers[index] = Array.from(selectedNodes).map(n => n.value);
+            
+            const checkBtn = document.getElementById(`check-btn-${index}`);
+            if (checkBtn && checkBtn.style.display === 'none') locked[index] = true;
         });
         localStorage.setItem('mcq_user_answers', JSON.stringify(answers));
+        localStorage.setItem('mcq_locked_answers', JSON.stringify(locked));
     }
 
     function restoreUserAnswers() {
         const savedAnswers = JSON.parse(localStorage.getItem('mcq_user_answers') || '{}');
+        const lockedAnswers = JSON.parse(localStorage.getItem('mcq_locked_answers') || '{}');
+
         Object.keys(savedAnswers).forEach(index => {
             savedAnswers[index].forEach(val => {
                 const el = document.querySelector(`input[name="q${index}"][value="${val}"]`);
                 if (el) el.checked = true;
             });
+            if (lockedAnswers[index]) checkSingleAnswer(index);
         });
     }
 
@@ -591,12 +952,11 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
         localStorage.setItem('mcq_exam_view', 'active');
         
         activeExamQuestions = [...questionsData];
-        if (document.getElementById('randomize-qs').checked) {
-            shuffleArray(activeExamQuestions);
-        }
+        if (document.getElementById('randomize-qs').checked) shuffleArray(activeExamQuestions);
         
         localStorage.setItem('mcq_active_questions', JSON.stringify(activeExamQuestions));
         localStorage.setItem('mcq_user_answers', '{}'); 
+        localStorage.setItem('mcq_locked_answers', '{}');
 
         document.getElementById('exam-pre').style.display = 'none';
         document.getElementById('exam-result').style.display = 'none';
@@ -627,11 +987,8 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
         renderActiveQuestions();
         restoreUserAnswers();
 
-        if (timeRemaining > 0) {
-            startTimerLogic();
-        } else {
-             document.getElementById('timer').style.display = 'none';
-        }
+        if (timeRemaining > 0) startTimerLogic();
+        else document.getElementById('timer').style.display = 'none';
     }
 
     function restoreResultView() {
@@ -644,7 +1001,6 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
     function startTimerLogic() {
         updateTimerDisplay();
         document.getElementById('timer').style.display = 'block';
-        
         if (timerInterval) clearInterval(timerInterval);
         
         timerInterval = setInterval(() => {
@@ -667,58 +1023,67 @@ Explanation: [Brief explanation of why the answer is correct]</textarea>
     }
 
     function submitExam() {
-        if (timerInterval) clearInterval(timerInterval);
-        localStorage.setItem('mcq_exam_view', 'result');
+    if (timerInterval) clearInterval(timerInterval);
+    localStorage.setItem('mcq_exam_view', 'result');
+    
+    let score = 0;
+    const reviewContainer = document.getElementById('review-container');
+    reviewContainer.innerHTML = "<h3 style='margin-bottom: 24px; font-size: 24px; border-bottom: 2px solid var(--border); padding-bottom: 10px;'>Review Your Answers:</h3>";
+
+    activeExamQuestions.forEach((q, index) => {
+        const selectedNodes = document.querySelectorAll(`input[name="q${index}"]:checked`);
+        const userAnswers = Array.from(selectedNodes).map(n => n.value).sort();
+        const correctAnswers = [...q.answers].sort();
         
-        let score = 0;
-        const reviewContainer = document.getElementById('review-container');
-        reviewContainer.innerHTML = "<h3 style='margin-bottom: 24px; font-size: 24px; border-bottom: 2px solid #E5E7EB; padding-bottom: 10px;'>Review Your Answers:</h3>";
-
-        activeExamQuestions.forEach((q, index) => {
-            const selectedNodes = document.querySelectorAll(`input[name="q${index}"]:checked`);
-            const userAnswers = Array.from(selectedNodes).map(n => n.value).sort();
-            const correctAnswers = [...q.answers].sort();
-            
-            const isCorrect = userAnswers.length === correctAnswers.length && 
-                              userAnswers.every((val, i) => val === correctAnswers[i]);
-            
-            if (isCorrect) score++;
-
-            let qTextDisplay = q.question ? q.question : "[No Question Text Provided]";
-            let userDisplay = userAnswers.length > 0 ? userAnswers.join(', ') : 'Skipped';
-            let correctDisplay = correctAnswers.join(', ');
-
-            let reviewHtml = `<div class="question-block" style="border-left: 5px solid ${isCorrect ? '#059669' : '#DC2626'}">
-                <div class="question-text">${index + 1}. ${qTextDisplay}</div>
-                <div style="font-size: 15px; margin-top: 12px;">
-                    Your answer: <strong style="color: ${isCorrect ? '#059669' : '#DC2626'}">${userDisplay}</strong> <br>
-                    Correct answer: <strong>${correctDisplay}</strong>
-                </div>`;
-            
-            if (q.explanation) {
-                reviewHtml += `<div class="explanation"><strong>Explanation:</strong><br>${q.explanation}</div>`;
-            }
-
-            reviewHtml += `</div>`;
-            reviewContainer.innerHTML += reviewHtml;
-        });
-
-        document.getElementById('exam-active').style.display = 'none';
-        document.getElementById('exam-result').style.display = 'block';
+        const isCorrect = userAnswers.length === correctAnswers.length && 
+                          userAnswers.every((val, i) => val === correctAnswers[i]);
         
-        const percentage = Math.round((score / activeExamQuestions.length) * 100);
-        document.getElementById('score-display').innerText = `${score} / ${activeExamQuestions.length}`;
-        document.getElementById('percentage-display').innerText = `${percentage}%`;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+        if (isCorrect) score++;
+
+        let qTextDisplay = q.question ? q.question : "[No Question Text Provided]";
+        let userDisplay = userAnswers.length > 0 ? userAnswers.join(', ') : 'Skipped';
+        let correctDisplay = correctAnswers.join(', ');
+
+        let reviewHtml = `<div class="question-block" style="border-left: 5px solid ${isCorrect ? '#059669' : '#DC2626'}">
+            <div class="question-text" style="margin-bottom: 8px;">${index + 1}. ${qTextDisplay}</div>`;
+        
+        // Render options cleanly with minimal spacing
+        for (const [key, value] of Object.entries(q.options)) {
+            reviewHtml += `<div style="font-size: 14px; margin-bottom: 4px;"><strong>${key})</strong> ${value}</div>`;
+        }
+
+        // Original compact answer block
+        reviewHtml += `<div style="font-size: 15px; margin-top: 12px;">
+                Your answer: <strong style="color: ${isCorrect ? '#059669' : '#DC2626'}">${userDisplay}</strong> <br>
+                Correct answer: <strong style="color: var(--text);">${correctDisplay}</strong>
+            </div>`;
+        
+        if (q.explanation) {
+            reviewHtml += `<div class="explanation"><strong>Explanation:</strong><br>${q.explanation}</div>`;
+        }
+
+        reviewHtml += `</div>`;
+        reviewContainer.innerHTML += reviewHtml;
+    });
+
+    document.getElementById('exam-active').style.display = 'none';
+    document.getElementById('exam-result').style.display = 'block';
+    
+    const percentage = Math.round((score / activeExamQuestions.length) * 100);
+    document.getElementById('score-display').innerText = `${score} / ${activeExamQuestions.length}`;
+    document.getElementById('percentage-display').innerText = `${percentage}%`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
     function resetExam() {
         localStorage.removeItem('mcq_exam_view');
         localStorage.removeItem('mcq_active_questions');
         localStorage.removeItem('mcq_user_answers');
+        localStorage.removeItem('mcq_locked_answers');
         localStorage.removeItem('mcq_time_remaining');
 
         document.getElementById('exam-result').style.display = 'none';
+        document.getElementById('exam-active').style.display = 'none';
         document.getElementById('exam-pre').style.display = 'block';
     }
 </script>
