@@ -365,15 +365,16 @@
             <h3 class="step-header">Step 1: Generate Questions from AI (Of your topic)</h3>
             <div class="ai-prompt-box">
                 <p style="margin-top: 0; margin-bottom: 12px;">Copy the prompt below and paste it into ChatGPT, Claude, or Gemini.</p>
-                <textarea id="ai-prompt-text" class="ai-textarea" readonly>Act as an expert quiz creator. Generate 25 multiple-choice questions about [INSERT TOPIC HERE]. 
+                <textarea id="ai-prompt-text" class="ai-textarea" readonly>Act as an expert quiz creator. Generate 50 multiple-choice questions about [INSERT TOPIC HERE]. 
 
 Mix it if needed: some questions can have 1 correct answer, and others can have multiple correct answers.
 
 CRITICAL INSTRUCTIONS - YOU MUST STRICTLY FOLLOW THIS EXACT FORMAT:
 - Questions MUST start with a number followed by a period (e.g., 1., 2.).
-- Options MUST start with UPPERCASE letters followed by a period (e.g., A., B., C., D.). Do NOT use lowercase letters (a., b.) or parentheses.
-- The answer line MUST start exactly with "Ans: ".
-- The explanation line MUST start exactly with "Explanation: ".
+- Options MUST start with UPPERCASE letters followed by a period (e.g., A., B., C., D.). Do NOT use lowercase letters (a., b.) or numbers (1., 2.) for options.
+- The answer line MUST start exactly with "Ans: ". Do NOT use bolding or markdown (e.g., no **Ans:**).
+- The explanation line MUST start exactly with "Explanation: ". Do NOT use bolding or markdown.
+- Put each option, the answer, and the explanation on a NEW line.
 - Separate each question block with exactly ONE blank line.
 
 Example format:
@@ -382,7 +383,7 @@ A. [Option 1]
 B. [Option 2]
 C. [Option 3]
 D. [Option 4]
-Ans: A, C
+Ans: A or A, C
 Explanation: [Brief explanation]</textarea>
                 <button class="copy-btn" onclick="copyAIPrompt()" id="copy-btn-el">Copy Prompt</button>
             </div>
